@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 import dlib
 import math
+import sys
 
 # variables
 fonts = cv.FONT_HERSHEY_COMPLEX
@@ -47,7 +48,7 @@ def midpoint(pts1, pts2):
 def eucaldainDistance(pts1, pts2):
     x, y = pts1
     x1, y1 = pts2
-    eucaldainDist = math.sqrt((x1 - x) * 2 + (y1 - y) * 2)
+    eucaldainDist = math.sqrt((x1 - x) ** 2 + (y1 - y) ** 2)
 
     return eucaldainDist
 
@@ -114,7 +115,7 @@ def EyeTracking(image, gray, eyePoints):
     gray2 = gray
     # Writing gray image where color is White  in the mask using Bitwise and operator.
     eyeImage = cv.bitwise_and(gray, gray, mask=mask)
-    cv.imshow('eyeimage', eyeImage)
+    #cv.imshow('eyeimage', eyeImage)
     eyeImage2 = eyeImage
 
     # getting the max and min points of eye inorder to crop the eyes from Eye image .
@@ -138,10 +139,14 @@ def EyeTracking(image, gray, eyePoints):
     bestthreshold(cropedEye)
     bestMax, bestMin  = bestthreshold(cropedEye)
     _, bestThresholdEye = cv.threshold(cropedEye, bestMin, 255, cv.THRESH_BINARY)
-
-    print(bestThresholdEye)
     cv.imshow('BestThresh', bestThresholdEye)
     cv.imshow('tresh',thresholdEye)
+
+    centery = centerEyey(thresholdEye)
+    centerx = centerEyex(thresholdEye)
+    print((centerx, centery))
+    image = cv.circle(eyeImage, (centerx, centery), 100, 255,5)
+    cv.imshow('eyeImage', image)
     irisImage = cv.bitwise_and(gray2[minY:maxY, minX:maxX], gray2[minY:maxY, minX:maxX], mask=np.bitwise_not(thresholdEye))
     irisImage[irisImage == 0] = 255
     saida = cv.Canny(cropedEye,100,200)
@@ -203,3 +208,13 @@ def bestthreshold(crop):
     _, thresholdEye = cv.threshold(crop, bestMinThreshold , bestMaxThreshold, cv.THRESH_BINARY)
     
     return bestMinThreshold, bestMaxThreshold
+
+def centerEyex(croppedEye):
+    non_zero_counts = np.count_nonzero(croppedEye, axis=1)
+    min_column_index = np.argmin(non_zero_counts)
+    return min_column_index
+
+def centerEyey(croppedEye):
+    non_zero_counts = np.count_nonzero(croppedEye, axis=0)
+    min_column_index = np.argmin(non_zero_counts)
+    return min_column_index
