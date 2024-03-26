@@ -47,7 +47,7 @@ def midpoint(pts1, pts2):
 def eucaldainDistance(pts1, pts2):
     x, y = pts1
     x1, y1 = pts2
-    eucaldainDist = math.sqrt((x1 - x) ** 2 + (y1 - y) ** 2)
+    eucaldainDist = math.sqrt((x1 - x) * 2 + (y1 - y) * 2)
 
     return eucaldainDist
 
@@ -134,7 +134,13 @@ def EyeTracking(image, gray, eyePoints):
     #  applying the threshold to the eye .
     #58
     _, thresholdEye = cv.threshold(cropedEye,58 , 255, cv.THRESH_BINARY)
+
     bestthreshold(cropedEye)
+    bestMax, bestMin  = bestthreshold(cropedEye)
+    _, bestThresholdEye = cv.threshold(cropedEye, bestMin, 255, cv.THRESH_BINARY)
+
+    print(bestThresholdEye)
+    cv.imshow('BestThresh', bestThresholdEye)
     cv.imshow('tresh',thresholdEye)
     irisImage = cv.bitwise_and(gray2[minY:maxY, minX:maxX], gray2[minY:maxY, minX:maxX], mask=np.bitwise_not(thresholdEye))
     irisImage[irisImage == 0] = 255
@@ -181,12 +187,19 @@ def Position(ValuesList):
     return posEye, color
 
 def bestthreshold(crop):
-    print(np.array(crop).shape)
     maxX = int(np.array(crop).shape[0])
     maxY = int(np.array(crop).shape[1])
-    centerX = maxX/2
-    CenterY = maxY/2
+    centerX = int(maxX/2)
+    centerY = int(maxY/2)    
+    minX = 0
 
-    _, thresholdEye = cv.threshold(crop,58 , 170, cv.THRESH_BINARY)
-    pass
+    leftCenter = crop[maxX-1,centerY]
+    rightCenter = crop[minX, centerY]
+
+    bestMaxThreshold = max(leftCenter, rightCenter)
+
+    bestMinThreshold = crop[centerX, centerY]
+
+    _, thresholdEye = cv.threshold(crop, bestMinThreshold , bestMaxThreshold, cv.THRESH_BINARY)
     
+    return bestMinThreshold, bestMaxThreshold
