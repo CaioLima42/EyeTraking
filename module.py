@@ -2,8 +2,7 @@ import cv2 as cv
 import numpy as np
 import dlib
 import math
-import sys
-
+from screeninfo import get_monitors
 # variables
 fonts = cv.FONT_HERSHEY_COMPLEX
 
@@ -102,7 +101,7 @@ def blinkDetector(eyePoints):
 # Eyes Tracking function.
 
 
-def EyeTracking(image, gray, eyePoints):
+def EyeTracking(image, gray, eyePoints, time, bestMin):
     # getting dimensions of image
     dim = gray.shape
     # creating mask .
@@ -135,16 +134,32 @@ def EyeTracking(image, gray, eyePoints):
     #  applying the threshold to the eye .
     #58
     _, thresholdEye = cv.threshold(cropedEye,58 , 255, cv.THRESH_BINARY)
-
-    bestthreshold(cropedEye)
-    bestMax, bestMin  = bestthreshold(cropedEye)
+    if time <= 5:
+        _, bestMin  = bestthreshold(cropedEye, bestMin)
     _, bestThresholdEye = cv.threshold(cropedEye, bestMin, 255, cv.THRESH_BINARY)
     cv.imshow('BestThresh', bestThresholdEye)
     cv.imshow('tresh',thresholdEye)
 
-    centery = centerEyey(thresholdEye)
-    centerx = centerEyex(thresholdEye)
-    print((centerx, centery))
+    centery = centerEyey(bestThresholdEye)
+    centerx = centerEyex(bestThresholdEye)
+
+    center = np.ones((bestThresholdEye.shape), dtype=int).astype(np.uint8) * 255
+    print(centerx, centery)
+    center[centerx, centery] = 0
+    center = cv.cvtColor(center, cv.COLOR_GRAY2BGR)
+    monitores = get_monitors()
+
+    if monitores:
+        monitor = monitores[0]  # Vamos usar apenas o primeiro monitor por simplicidade
+        w = monitor.width
+        h = monitor.height
+
+    tela_redimensionada = cv.resize(center, (w, h))
+    cv.imshow('red', tela_redimensionada)
+
+    cv.imshow('centerEye', center)
+
+    center = np.ones((bestThresholdEye.shape), dtype=int).astype(np.uint8) * 255
     image = cv.circle(eyeImage, (centerx, centery), 100, 255,5)
     cv.imshow('eyeImage', image)
     irisImage = cv.bitwise_and(gray2[minY:maxY, minX:maxX], gray2[minY:maxY, minX:maxX], mask=np.bitwise_not(thresholdEye))
@@ -166,11 +181,8 @@ def EyeTracking(image, gray, eyePoints):
     leftBlackPx = np.sum(leftPart == 0)
     pos, color = Position([rightBlackPx, centerBlackPx, leftBlackPx])
 
-    return mask, pos, color, cropedEye
+    return mask, pos, color, cropedEye, bestMin
 
-#def eyeimages(gray,mask1 , mask2):
- #   eyeImage1 = cv.bitwise_and(gray, gray, mask=mask1)
-  #  eyeImage2 = cv.bitwise_and(gray, gray, mask=mask2)
 
 def Position(ValuesList):
 
@@ -191,7 +203,7 @@ def Position(ValuesList):
         color = [BLACK, WHITE]
     return posEye, color
 
-def bestthreshold(crop):
+def bestthreshold(crop, bestMin = 0):
     maxX = int(np.array(crop).shape[0])
     maxY = int(np.array(crop).shape[1])
     centerX = int(maxX/2)
@@ -205,14 +217,14 @@ def bestthreshold(crop):
 
     bestMinThreshold = crop[centerX, centerY]
 
-    _, thresholdEye = cv.threshold(crop, bestMinThreshold , bestMaxThreshold, cv.THRESH_BINARY)
+    bestMinThreshold = max(bestMinThreshold, bestMin)
     
     return bestMinThreshold, bestMaxThreshold
 
 def centerEyex(croppedEye):
     non_zero_counts = np.count_nonzero(croppedEye, axis=1)
-    min_column_index = np.argmin(non_zero_counts)
-    return min_column_index
+    min_line_index = np.argmin(non_zero_counts)
+    return min_line_index
 
 def centerEyey(croppedEye):
     non_zero_counts = np.count_nonzero(croppedEye, axis=0)

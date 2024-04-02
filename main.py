@@ -14,11 +14,8 @@ FRAME_COUNTER = 0
 START_TIME = time.time()
 FPS = 0
 
-
 # creating camera object
 camera = cv.VideoCapture(0)
-# camera.set(3, 640)
-# camera.set(4, 480)
 
 # Define the codec and create VideoWriter object
 fourcc = cv.VideoWriter_fourcc(*'XVID')
@@ -30,8 +27,8 @@ fileName = videoPath.split('/')[1]
 name = fileName.split('.')[0]
 print(name)
 
-
-# Recoder = cv.VideoWriter(f'{name}.mp4', fourcc, 15, (int(width), int(height)))
+countValue = 0
+bestMinT = 0
 
 while True:
     FRAME_COUNTER += 1
@@ -58,12 +55,6 @@ while True:
         leftRatio, lTop, lBottom = m.blinkDetector(LeftEyePoint)
         rightRatio, rTop, rBottom = m.blinkDetector(RightEyePoint)
 
-        #circulos na parte mais abaixo e mais acima do olho
-        #cv.circle(frame, topMid, 2, m.YELLOW, -1)
-        #cv.circle(fram, bottomMid, 2, m.YELLOW, -1)
-        #cv.circle(frame, rTop, 2, m.YELLOW, -1)
-        #cv.circle(frame, rBottom, 2, m.YELLOW, -1)
-
         blinkRatio = (leftRatio + rightRatio)/2
         cv.circle(frame, circleCenter, (int(blinkRatio*4.3)), m.CHOCOLATE, -1)
         cv.circle(frame, circleCenter, (int(blinkRatio*3.2)), m.CYAN, 2)
@@ -73,7 +64,6 @@ while True:
             COUNTER += 1
             cv.putText(frame, f'Blink', (70, 50),
                        m.fonts, 0.8, m.LIGHT_BLUE, 2)
-            # print("blink")
         else:
             if COUNTER > CLOSED_EYES_FRAME:
                 TOTAL_BLINKS += 1
@@ -81,16 +71,13 @@ while True:
         cv.putText(frame, f'Total Blinks: {TOTAL_BLINKS}', (230, 17),
                    m.fonts, 0.5, m.ORANGE, 2)
 
-        #for p in LeftEyePoint:
-             #cv.circle(frame, p, 3, m.MAGENTA, 1)
-       
-        mask, pos, color,eyeImage = m.EyeTracking(frame2, grayFrame, RightEyePoint)
-        maskleft, leftPos, leftColor,eyeImage = m.EyeTracking(
-            frame2, grayFrame, LeftEyePoint)
+        elapsed_time = time.time() - START_TIME
+        mask, pos, color,eyeImage, bestMinT = m.EyeTracking(frame2, grayFrame, RightEyePoint, elapsed_time, bestMinT)
+        maskleft, leftPos, leftColor,eyeImage, bestMinT = m.EyeTracking(
+            frame2, grayFrame, LeftEyePoint, elapsed_time, bestMinT)
         mymask = np.bitwise_xor(mask, maskleft)
-        #cv.imshow("mask", mymask)
-        #cv.imshow("thresholdEye", eyeImage)
-        
+
+        countValue += 1
 
         # draw background as line where we put text.
         cv.line(frame, (30, 90), (100, 90), color[0], 30)
@@ -107,11 +94,8 @@ while True:
         cv.putText(frame, f'Left Eye', (int(width-145), 55),
                    m.fonts, 0.6, leftColor[1], 2)
 
-        # showing the frame on the screen
-        cv.imshow('Frame', frame)
     else:
         pass
-        cv.imshow('Frame', frame)
 
     # Recoder.write(frame)
     # calculating the seconds
