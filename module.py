@@ -2,38 +2,18 @@ import cv2 as cv
 import numpy as np
 import dlib
 import math
-from screeninfo import get_monitors
+#from screeninfo import get_monitors
+import json
+import time
+import os
 # variables
 fonts = cv.FONT_HERSHEY_COMPLEX
-
-# colors
-YELLOW = (0, 247, 255)
-CYAN = (255, 255, 0)
-MAGENTA = (255, 0, 242)
-GOLDEN = (32, 218, 165)
-LIGHT_BLUE = (255, 9, 2)
-PURPLE = (128, 0, 128)
-CHOCOLATE = (30, 105, 210)
-PINK = (147, 20, 255)
-ORANGE = (0, 69, 255)
-GREEN = (0, 255, 0)
-LIGHT_GREEN = (0, 255, 13)
-LIGHT_CYAN = (255, 204, 0)
-BLUE = (255, 0, 0)
-RED = (0, 0, 255)
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-LIGHT_RED = (2, 53, 255)
-
 
 # face detector object
 detectFace = dlib.get_frontal_face_detector()
 # landmarks detector
 predictor = dlib.shape_predictor(
     "Predictor/shape_predictor_68_face_landmarks.dat")
-
-# function
-
 
 def midpoint(pts1, pts2):
     x, y = pts1
@@ -54,7 +34,7 @@ def eucaldainDistance(pts1, pts2):
 # creating face detector function
 
 
-def faceDetector(image, gray, Draw=True):
+def faceDetector(image, gray, Draw=False):
     cordFace1 = (0, 0)
     cordFace2 = (0, 0)
     # getting faces from face detector
@@ -66,20 +46,19 @@ def faceDetector(image, gray, Draw=True):
         cordFace1 = (face.left(), face.top())
         cordFace2 = (face.right(), face.bottom())
 
-        # draw rectangle if draw is True.
         if Draw == True:
-            cv.rectangle(image, cordFace1, cordFace2, GREEN, 2)
+            cv.rectangle(image, cordFace1, cordFace2, (0, 255, 0), 2)
     return face
 
 
-def faceLandmakDetector(image, gray, face, Draw=True):
+def faceLandmakDetector(image, gray, face, Draw=False):
     # calling the landmarks predictor
     landmarks = predictor(gray, face)
     landmarks.parts()
     pointList = [(p.x, p.y) for p in landmarks.parts()]
     if Draw == True:
         for point in pointList:
-            cv.circle(image, point, 3, ORANGE, 1)
+            cv.circle(image, point, 3, (0, 69, 255), 1)
     return pointList
 
 # Blink detector function.
@@ -101,7 +80,7 @@ def blinkDetector(eyePoints):
 # Eyes Tracking function.
 
 
-def EyeTracking(image, gray, eyePoints, time, bestMin):
+def EyeTracking(image, gray, eyePoints, time, bestMin, startTime):
     # getting dimensions of image
     dim = gray.shape
     # creating mask .
@@ -111,11 +90,8 @@ def EyeTracking(image, gray, eyePoints, time, bestMin):
     PollyPoints = np.array(eyePoints, dtype=np.int32)
     # Filling the Eyes portion with WHITE color.
     cv.fillPoly(mask, [PollyPoints], 255)
-    gray2 = gray
     # Writing gray image where color is White  in the mask using Bitwise and operator.
     eyeImage = cv.bitwise_and(gray, gray, mask=mask)
-    #cv.imshow('eyeimage', eyeImage)
-    eyeImage2 = eyeImage
 
     # getting the max and min points of eye inorder to crop the eyes from Eye image .
 
@@ -129,79 +105,100 @@ def EyeTracking(image, gray, eyePoints, time, bestMin):
 
     # cropping the eye form eyeImage.
     cropedEye = eyeImage[minY:maxY, minX:maxX]
-    #cv.bilateralFilter(eyeImage,d=10,sigmaColor=75,sigmaSpace=75)
     cv.GaussianBlur(src=cropedEye,ksize=(7,7),sigmaX=0)
-    #  applying the threshold to the eye .
-    #58
-    _, thresholdEye = cv.threshold(cropedEye,58 , 255, cv.THRESH_BINARY)
+    #_, thresholdEye = cv.threshold(cropedEye,58 , 255, cv.THRESH_BINARY)
     if time <= 5:
-        _, bestMin  = bestthreshold(cropedEye, bestMin)
+        bestMin,_ = bestthreshold(cropedEye, bestMin)
     _, bestThresholdEye = cv.threshold(cropedEye, bestMin, 255, cv.THRESH_BINARY)
     cv.imshow('BestThresh', bestThresholdEye)
-    cv.imshow('tresh',thresholdEye)
 
     centery = centerEyey(bestThresholdEye)
     centerx = centerEyex(bestThresholdEye)
-
+    if time > 5:
+        cordenates = dictFormat(centerx, centery, cropedEye.shape[0], cropedEye.shape[1], startTime)
+        jsonFormat(cordenates)
     center = np.ones((bestThresholdEye.shape), dtype=int).astype(np.uint8) * 255
     print(centerx, centery)
     center[centerx, centery] = 0
     center = cv.cvtColor(center, cv.COLOR_GRAY2BGR)
-    monitores = get_monitors()
-
-    if monitores:
-        monitor = monitores[0]  # Vamos usar apenas o primeiro monitor por simplicidade
-        w = monitor.width
-        h = monitor.height
-
-    tela_redimensionada = cv.resize(center, (w, h))
-    cv.imshow('red', tela_redimensionada)
 
     cv.imshow('centerEye', center)
 
-    center = np.ones((bestThresholdEye.shape), dtype=int).astype(np.uint8) * 255
-    image = cv.circle(eyeImage, (centerx, centery), 100, 255,5)
-    cv.imshow('eyeImage', image)
-    irisImage = cv.bitwise_and(gray2[minY:maxY, minX:maxX], gray2[minY:maxY, minX:maxX], mask=np.bitwise_not(thresholdEye))
-    irisImage[irisImage == 0] = 255
-    saida = cv.Canny(cropedEye,100,200)
-    # getting width and height of cropedEye
-    height, width = cropedEye.shape
+    return mask, cropedEye, bestMin
 
-    divPart = int(width/3)
+def dictFormat( X, Y, width, height, starttime):
+    dictonary = {}
+    quadrante1 = (X > 0 and X < width/3) and (Y > 0 and Y < height/3)
+    quadrante2 = (X > width/3 and X < 2 * (width/3)) and (Y > 0 and Y < height/3)
+    quadrante3 = (X > 2 * (width/3) and X < width/3) and (Y > 0 and Y < height/3)
+    quadrante4 = (X > 0 and X < width/3) and (Y > height/3 and Y < 2*(height/3))
+    quadrante5 = (X > width/3 and X < 2 * (width/3)) and (Y > height/3 and Y < 2*(height/3))
+    quadrante6 = (X > 2 * (width/3) and X < width/3) and (Y > height/3 and Y < 2*(height/3))
+    quadrante7 = (X > 0 and X < width/3) and (Y > 2*(height/3) and Y < height)
+    quadrante8 = (X > width/3 and X < 2 * (width/3)) and (Y > 2*(height/3) and Y < height)
+    quadrante9 = (X > 2 * (width/3) and X < width) and (Y > 2*(height/3) and Y < height)
 
-    # dividing the eye into Three parts .
-    rightPart = thresholdEye[0:height, 0:divPart]
-    centerPart = thresholdEye[0:height, divPart:divPart+divPart]
-    leftPart = thresholdEye[0:height, divPart+divPart:width]
+    if quadrante1:
+        dictonary = dict(
+            horizontal = 'esquerda',
+            vertical = 'cima'
+        )
 
-    # counting Black pixel in each part using numpy.
-    rightBlackPx = np.sum(rightPart == 0)
-    centerBlackPx = np.sum(centerPart == 0)
-    leftBlackPx = np.sum(leftPart == 0)
-    pos, color = Position([rightBlackPx, centerBlackPx, leftBlackPx])
+    elif quadrante2:
+        dictonary = dict(
+            horizontal = 'centro',
+            vertical = 'cima'
+        )
 
-    return mask, pos, color, cropedEye, bestMin
+    elif quadrante3:
+        dictonary = dict(
+            horizontal = 'direita',
+            vertical = 'cima'
+        )
+    elif quadrante4:
+        dictonary = dict(
+            horizontal = 'esquerda',
+            vertical = 'centro'
+        )
+    elif quadrante5:
+        dictonary = dict(
+            horizontal = 'centro',
+            vertical = 'centro'
+        )
+    elif quadrante6:
+        dictonary = dict(
+            horizontal = 'direita',
+            vertical = 'centro'
+        )
+    elif quadrante7:
+        dictonary = dict(
+            horizontal = 'esquerda',
+            vertical = 'baixo'
+        )
+    elif quadrante8:
+        dictonary = dict(
+            horizontal = 'centro',
+            vertical = 'baixo'
+        )
+    elif quadrante9:
+        dictonary = dict(
+            horizontal = 'direita',
+            vertical = 'baixo'
+        )
+    dictonary ['instante'] = time.time() - starttime
+
+    return dictonary
 
 
-def Position(ValuesList):
-
-    maxIndex = ValuesList.index(max(ValuesList))
-    posEye = ''
-    color = [WHITE, BLACK]
-    if maxIndex == 0:
-        posEye = "Right"
-        color = [YELLOW, BLACK]
-    elif maxIndex == 1:
-        posEye = "Center"
-        color = [BLACK, MAGENTA]
-    elif maxIndex == 2:
-        posEye = "Left"
-        color = [LIGHT_CYAN, BLACK]
+def jsonFormat(information):
+    if os.path.exists('cache/informationEye.json'):
+        with open('cache/informationEye.json', 'r') as f:
+            data = json.load(f)
     else:
-        posEye = "Eye Closed"
-        color = [BLACK, WHITE]
-    return posEye, color
+        data = []
+    data.append(information)
+    with open("cache/informationEye.json", 'w') as f:
+        json.dump(data, f, indent=2)
 
 def bestthreshold(crop, bestMin = 0):
     maxX = int(np.array(crop).shape[0])
@@ -214,9 +211,7 @@ def bestthreshold(crop, bestMin = 0):
     rightCenter = crop[minX, centerY]
 
     bestMaxThreshold = max(leftCenter, rightCenter)
-
     bestMinThreshold = crop[centerX, centerY]
-
     bestMinThreshold = max(bestMinThreshold, bestMin)
     
     return bestMinThreshold, bestMaxThreshold
