@@ -74,13 +74,9 @@ while True:
     else:
         pass
 
-    # Recoder.write(frame)
-    # calculating the seconds
     SECONDS = time.time() - START_TIME
     # calculating the frame rate
     FPS = FRAME_COUNTER/SECONDS
-    # print(FPS)
-    # defining the key to Quite the Loop
 
     key = cv.waitKey(1)
 

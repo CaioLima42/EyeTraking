@@ -20,7 +20,6 @@ def midpoint(pts1, pts2):
     x1, y1 = pts2
     xOut = int((x + x1)/2)
     yOut = int((y1 + y)/2)
-    # print(xOut, x, x1)
     return (xOut, yOut)
 
 
@@ -116,7 +115,8 @@ def EyeTracking(image, gray, eyePoints, time, bestMin, startTime):
     centerx = centerEyex(bestThresholdEye)
     if time > 5:
         cordenates = dictFormat(centerx, centery, cropedEye.shape[0], cropedEye.shape[1], startTime)
-        jsonFormat(cordenates)
+        if cordenates != -1:
+            jsonFormat(cordenates)
     center = np.ones((bestThresholdEye.shape), dtype=int).astype(np.uint8) * 255
     print(centerx, centery)
     center[centerx, centery] = 0
@@ -130,10 +130,10 @@ def dictFormat( X, Y, width, height, starttime):
     dictonary = {}
     quadrante1 = (X > 0 and X < width/3) and (Y > 0 and Y < height/3)
     quadrante2 = (X > width/3 and X < 2 * (width/3)) and (Y > 0 and Y < height/3)
-    quadrante3 = (X > 2 * (width/3) and X < width/3) and (Y > 0 and Y < height/3)
+    quadrante3 = (X > 2 * (width/3) and X < width) and (Y > 0 and Y < height/3)
     quadrante4 = (X > 0 and X < width/3) and (Y > height/3 and Y < 2*(height/3))
     quadrante5 = (X > width/3 and X < 2 * (width/3)) and (Y > height/3 and Y < 2*(height/3))
-    quadrante6 = (X > 2 * (width/3) and X < width/3) and (Y > height/3 and Y < 2*(height/3))
+    quadrante6 = (X > 2 * (width/3) and X < width) and (Y > height/3 and Y < 2*(height/3))
     quadrante7 = (X > 0 and X < width/3) and (Y > 2*(height/3) and Y < height)
     quadrante8 = (X > width/3 and X < 2 * (width/3)) and (Y > 2*(height/3) and Y < height)
     quadrante9 = (X > 2 * (width/3) and X < width) and (Y > 2*(height/3) and Y < height)
@@ -185,7 +185,9 @@ def dictFormat( X, Y, width, height, starttime):
             horizontal = 'direita',
             vertical = 'baixo'
         )
-    dictonary ['instante'] = time.time() - starttime
+    else:
+        return -1
+    dictonary['instante'] = time.time() - starttime
 
     return dictonary
 
