@@ -110,23 +110,23 @@ def EyeTracking(image, gray, eyePoints, time, bestMin, startTime):
     PupilaTest(teste)
     cv.GaussianBlur(src=cropedEye,ksize=(7,7),sigmaX=0)
     #_, thresholdEye = cv.threshold(cropedEye,58 , 255, cv.THRESH_BINARY)
-    if time <= 5:
-        bestMin,_ = bestthreshold(cropedEye, bestMin)
-    _, bestThresholdEye = cv.threshold(cropedEye, bestMin, 255, cv.THRESH_BINARY)
-    cv.imshow('BestThresh', bestThresholdEye)
+   # if time <= 5:
+    #    bestMin,_ = bestthreshold(cropedEye, bestMin)
+    #_, bestThresholdEye = cv.threshold(cropedEye, bestMin, 255, cv.THRESH_BINARY)
+    #cv.imshow('BestThresh', bestThresholdEye)
 
-    centery = centerEyey(bestThresholdEye)
-    centerx = centerEyex(bestThresholdEye)
-    if time > 5:
-        cordenates = dictFormatCenter(centerx, centery, cropedEye.shape[0], cropedEye.shape[1], startTime)
+    #centery = centerEyey(bestThresholdEye)
+    #centerx = centerEyex(bestThresholdEye)
+    #if time > 5:
+     #   cordenates = dictFormatCenter(centerx, centery, cropedEye.shape[0], cropedEye.shape[1], startTime)
         #if cordenates != -1:
             #jsonFormat(cordenates)
-    center = np.ones((bestThresholdEye.shape), dtype=int).astype(np.uint8) * 255
-    print(centerx, centery)
-    center[centerx, centery] = 0
-    center = cv.cvtColor(center, cv.COLOR_GRAY2BGR)
+   # center = np.ones((bestThresholdEye.shape), dtype=int).astype(np.uint8) * 255
+   # print(centerx, centery)
+    #center[centerx, centery] = 0
+   # center = cv.cvtColor(center, cv.COLOR_GRAY2BGR)
 
-    cv.imshow('centerEye', center)
+    #cv.imshow('centerEye', center)
 
     return mask, cropedEye, bestMin
 
@@ -258,8 +258,8 @@ def PupilaTest(img):
     #cv.imshow('Preto', img)
 
     # detecção de círculos
-    circles = cv.HoughCircles(copia, cv.HOUGH_GRADIENT, 1, 5,
-                            param1=40, param2=15, minRadius=2, maxRadius=100)
+    circles = cv.HoughCircles(copia, cv.HOUGH_GRADIENT, 2, 5,
+                            param1=30, param2=30, minRadius=4, maxRadius=100)
     print(circles)
 
     #param do Grab Cut
