@@ -104,6 +104,10 @@ def EyeTracking(image, gray, eyePoints, time, bestMin, startTime):
 
     # cropping the eye form eyeImage.
     cropedEye = eyeImage[minY:maxY, minX:maxX]
+    teste = gray[minY:maxY, minX:maxX]
+    cv.imshow('cropedEye', teste)
+    cv.GaussianBlur(src=teste,ksize=(3,3),sigmaX=0)
+    PupilaTest(teste)
     cv.GaussianBlur(src=cropedEye,ksize=(7,7),sigmaX=0)
     #_, thresholdEye = cv.threshold(cropedEye,58 , 255, cv.THRESH_BINARY)
     if time <= 5:
@@ -114,9 +118,9 @@ def EyeTracking(image, gray, eyePoints, time, bestMin, startTime):
     centery = centerEyey(bestThresholdEye)
     centerx = centerEyex(bestThresholdEye)
     if time > 5:
-        cordenates = dictFormat(centerx, centery, cropedEye.shape[0], cropedEye.shape[1], startTime)
-        if cordenates != -1:
-            jsonFormat(cordenates)
+        cordenates = dictFormatCenter(centerx, centery, cropedEye.shape[0], cropedEye.shape[1], startTime)
+        #if cordenates != -1:
+            #jsonFormat(cordenates)
     center = np.ones((bestThresholdEye.shape), dtype=int).astype(np.uint8) * 255
     print(centerx, centery)
     center[centerx, centery] = 0
@@ -188,8 +192,21 @@ def dictFormat( X, Y, width, height, starttime):
     else:
         return -1
     dictonary['instante'] = time.time() - starttime
-
+    print(dictonary)
     return dictonary
+
+def dictFormatCenter( X, Y, width, height, starttime):
+    #dictonary = {}
+    if X != None and Y != None:
+        dictonary = dict(
+                X = float(X),
+                Y = float(Y),
+                instante = time.time()- starttime,
+                )
+        print(dictonary)
+        return dictonary
+    else:
+        return -1
 
 
 def jsonFormat(information):
@@ -227,3 +244,38 @@ def centerEyey(croppedEye):
     non_zero_counts = np.count_nonzero(croppedEye, axis=0)
     min_column_index = np.argmin(non_zero_counts)
     return min_column_index
+
+def PupilaTest(img):
+    copia = img.copy()
+    #Extrai as cores entre o intervalo BGR definido
+    #mask = cv.inRange(img, (0, 0, 0), (60, 60, 60))
+    # slice no preto
+    #imask = mask > 0
+    #preto = np.zeros_like(img, np.uint8)
+   # preto[imask] = img[imask]
+
+    #preto = cv.cvtColor(preto, cv.COLOR_BGR2GRAY)
+    #cv.imshow('Preto', img)
+
+    # detecção de círculos
+    circles = cv.HoughCircles(copia, cv.HOUGH_GRADIENT, 1, 5,
+                            param1=40, param2=15, minRadius=2, maxRadius=100)
+    print(circles)
+
+    #param do Grab Cut
+    bgdModel = np.zeros((1, 65), np.float64)
+    fgdModel = np.zeros((1, 65), np.float64)
+
+    # pelo menos um círculo encontrado
+    if circles is not None:
+        # converte para int
+        print('passei por aqui')
+        # loop nas coordenadas (x, y) e raio dos círculos encontrados
+        circles = np.uint16(np.around(circles))
+        for i in circles[0,:]:
+        # draw the outer circle
+            cv.circle(img,(i[0],i[1]),i[2],(0,255,0),2)
+            # draw the center of the circle
+            cv.circle(img,(i[0],i[1]),2,(0,0,255),3)
+            cv.imshow('detected circles',img)
+        
