@@ -2,11 +2,10 @@ import cv2 as cv
 import numpy as np
 import dlib
 import math
-#from screeninfo import get_monitors
 import json
 import time
 import os
-# variables
+
 fonts = cv.FONT_HERSHEY_COMPLEX
 
 # face detector object
@@ -80,6 +79,7 @@ def blinkDetector(eyePoints):
 
 
 def EyeTracking(image, gray, eyePoints, time, bestMin, startTime):
+    normalizar = False
     # getting dimensions of image
     dim = gray.shape
     # creating mask .
@@ -107,10 +107,35 @@ def EyeTracking(image, gray, eyePoints, time, bestMin, startTime):
     teste = gray[minY:maxY, minX:maxX]
     cv.imshow('cropedEye', teste)
     cv.GaussianBlur(src=teste,ksize=(3,3),sigmaX=0)
-    PupilaTest(teste)
-    cv.GaussianBlur(src=cropedEye,ksize=(7,7),sigmaX=0)
+    xcenter, ycenter = PupilaTest(teste)
+    crops0 = cropedEye.shape[0]
+    crops1 = cropedEye.shape[1]
+    if int(time.time() - startTime) == 0:
+        os.open("./pointImages/direita.png")
+    if int(time.time() - startTime) == 30:
+        os.close("./pointImages/direita.png")
+        os.open("./pointImages/cima.png")
+    if int(time.time() - startTime) == 60:
+        os.close("./pointImages/cima.png")
+        os.open("./pointImages/esquerda.png")
+    if int(time.time() - startTime) == 90:
+        os.close("./pointImages/esquerda.png")
+        os.open("./pointImages/baixo.png")
+    if time.time() - startTime <= 120 and not normalizar:
+        os.close("./pointImages/baixo.png")
+        normx, normy = maiormenorxy()
+        normalizar = True
+    if normalizar:
+        xcenter = xcenter * normx
+        ycenter = ycenter * normy
+        crops0 = normx
+        crops1 = normy
+    
+    cordenates = dictFormat(xcenter, ycenter,crops0, crops1, startTime)
+    jsonFormat(cordenates)
+    #cv.GaussianBlur(src=cropedEye,ksize=(7,7),sigmaX=0)
     #_, thresholdEye = cv.threshold(cropedEye,58 , 255, cv.THRESH_BINARY)
-   # if time <= 5:
+    #if time <= 5:
     #    bestMin,_ = bestthreshold(cropedEye, bestMin)
     #_, bestThresholdEye = cv.threshold(cropedEye, bestMin, 255, cv.THRESH_BINARY)
     #cv.imshow('BestThresh', bestThresholdEye)
@@ -191,13 +216,16 @@ def dictFormat( X, Y, width, height, starttime):
         )
     else:
         return -1
-    dictonary['instante'] = time.time() - starttime
+    dict2 = dictFormatCenter( X, Y, width, height, starttime)
+    time = time.time() - starttime
+    dictonary['instante'] = time
+    dictonary.update(dict2)
     print(dictonary)
     return dictonary
 
 def dictFormatCenter( X, Y, width, height, starttime):
     #dictonary = {}
-    if X != None and Y != None:
+    if (X != None and Y != None) or (X > 0 and Y > 0):
         dictonary = dict(
                 X = float(X),
                 Y = float(Y),
@@ -207,6 +235,21 @@ def dictFormatCenter( X, Y, width, height, starttime):
         return dictonary
     else:
         return -1
+
+def maiormenorxy():
+    with open('cache/informationEye.json') as f:
+        dados = json.load(f)
+    maior_x = max(dado["X"] for dado in dados if isinstance(dado, dict) and "X" in dado and dado['instante'] < 30)
+    maior_y = max(dado["Y"] for dado in dados if isinstance(dado, dict) and "Y" in dado and dado['instante'] < 60)
+    menor_x = min(dado["X"] for dado in dados if isinstance(dado, dict) and "X" in dado and dado['instante'] < 90)
+    menor_y = min(dado["Y"] for dado in dados if isinstance(dado, dict) and "Y" in dado and dado['instante'] < 120)
+
+    normalx = maior_x - menor_x
+    normaly = maior_y - menor_y
+    if (normalx <= 0 or normaly <= 0) or (normalx == None or normaly == None):
+        print("erro ao processar os dados")
+        os._exit(0)
+    return normalx, normaly
 
 
 def jsonFormat(information):
@@ -252,24 +295,20 @@ def PupilaTest(img):
     # slice no preto
     #imask = mask > 0
     #preto = np.zeros_like(img, np.uint8)
-   # preto[imask] = img[imask]
+    #preto[imask] = img[imask]
 
     #preto = cv.cvtColor(preto, cv.COLOR_BGR2GRAY)
     #cv.imshow('Preto', img)
 
     # detecção de círculos
-    circles = cv.HoughCircles(copia, cv.HOUGH_GRADIENT, 2, 5,
-                            param1=30, param2=30, minRadius=4, maxRadius=100)
-    print(circles)
-
+    circles = cv.HoughCircles(copia, cv.HOUGH_GRADIENT, 1, 5,
+                            param1=10, param2=15, minRadius=5, maxRadius=100)
     #param do Grab Cut
-    bgdModel = np.zeros((1, 65), np.float64)
-    fgdModel = np.zeros((1, 65), np.float64)
+    #bgdModel = np.zeros((1, 65), np.float64)
+    #fgdModel = np.zeros((1, 65), np.float64)
 
     # pelo menos um círculo encontrado
     if circles is not None:
-        # converte para int
-        print('passei por aqui')
         # loop nas coordenadas (x, y) e raio dos círculos encontrados
         circles = np.uint16(np.around(circles))
         for i in circles[0,:]:
@@ -278,4 +317,7 @@ def PupilaTest(img):
             # draw the center of the circle
             cv.circle(img,(i[0],i[1]),2,(0,0,255),3)
             cv.imshow('detected circles',img)
+            x,y = i[0], i[1]
+            return x,y
+    return -1, -1
         

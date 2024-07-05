@@ -2,6 +2,8 @@ import cv2 as cv
 import numpy as np
 import module as m
 import time
+import json
+import matplotlib.pyplot as plt
 
 # Variables
 COUNTER = 0
@@ -27,6 +29,19 @@ fileName = videoPath.split('/')[1]
 name = fileName.split('.')[0]
 bestMinT = 0
 
+image = cv.imread('images/9quadrantes.jpeg')
+
+# Obtém as dimensões da tela
+screen_width = 1920 # Coloque a largura da sua tela
+screen_height = 1080 # Coloque a altura da sua tela
+# Redimensiona a imagem para o tamanho da tela
+image = cv.resize(image, (screen_width, screen_height))
+
+# Mostra a imagem em tela cheia
+cv.namedWindow('Imagem', cv.WND_PROP_FULLSCREEN)
+cv.setWindowProperty('Imagem', cv.WND_PROP_FULLSCREEN, cv.WINDOW_FULLSCREEN)
+cv.imshow('Imagem', image)
+cv.waitKey(1)
 while True:
     FRAME_COUNTER += 1
     # getting frame from camera
@@ -88,3 +103,46 @@ camera.release()
 # Recoder.release()
 # closing  all the windows
 cv.destroyAllWindows()
+
+with open('cache/informationEye.json') as f:
+    dados = json.load(f)
+
+#maior_x = max(dado["X"] for dado in dados if isinstance(dado, dict) and "X" in dado)
+#maior_y = max(dado["Y"] for dado in dados if isinstance(dado, dict) and "Y" in dado)
+#menor_x = min(dado["X"] for dado in dados if isinstance(dado, dict) and "X" in dado)
+#menor_y = min(dado["Y"] for dado in dados if isinstance(dado, dict) and "Y" in dado)
+
+x = [dado["X"] for dado in dados  if isinstance(dado, dict)]
+y = [dado["Y"] for dado in dados  if isinstance(dado, dict)]
+
+
+
+# Crie um dicionário para armazenar a contagem de cada ponto
+pontos = {}
+for i in range(len(x)):
+    ponto = (x[i], y[i])
+    if ponto in pontos:
+        pontos[ponto] += 1
+    else:
+        pontos[ponto] = 1
+
+# Separe os pontos únicos e repetidos
+pontos_unicos = [ponto for ponto, count in pontos.items() if count == 1]
+pontos_repetidos = [ponto for ponto, count in pontos.items() if count > 1]
+tamanho_repetidos = [pontos[ponto] * 50 for ponto in pontos_repetidos]  # Tamanho proporcional ao número de repetições
+
+# Plote os pontos únicos
+plt.scatter([ponto[0] for ponto in pontos_unicos], [ponto[1] for ponto in pontos_unicos], color='blue', label='Pontos únicos')
+
+# Plote os pontos repetidos com tamanhos maiores
+plt.scatter([ponto[0] for ponto in pontos_repetidos], [ponto[1] for ponto in pontos_repetidos], s=tamanho_repetidos, color='blue', label='Pontos repetidos')
+
+# Adicione legendas e rótulos
+plt.legend()
+plt.xlabel('Valores de X')
+plt.ylabel('Valores de Y')
+plt.title('Gráfico de Dispersão com Pontos Repetidos Destacados')
+plt.grid(True)
+
+# Exiba o gráfico
+plt.show()
